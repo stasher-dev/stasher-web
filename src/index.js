@@ -101,12 +101,12 @@ const HTML_CONTENT = `<!DOCTYPE html>
         <div class="section">
             <h2>Install</h2>
             <p>Drag this to your bookmarks bar:</p>
-            <a href="javascript:(async()=>{await import('https://stasher.dev/stasher-web.mjs').then(m=>m.default())})();" 
+            <a href="javascript:(async()=>{await import('https://install.stasher.dev/stasher-web.mjs').then(m=>m.default())})();" 
                class="install-button">Install Stasher</a>
                
             <p>Or paste in DevTools console:</p>
             <div class="code">
-                <pre>await import("https://stasher.dev/stasher-web.mjs").then(m => m.default())</pre>
+                <pre>await import("https://install.stasher.dev/stasher-web.mjs").then(m => m.default())</pre>
             </div>
         </div>
         
