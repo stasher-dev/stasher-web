@@ -1,0 +1,41 @@
+{
+  "name": "stasher-web",
+  "version": "1.0.0",
+  "description": "Secure secret sharing for browser DevTools - ESM module",
+  "type": "module",
+  "main": "stasher-web.mjs",
+  "files": [
+    "stasher-web.mjs",
+    "index.html",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "python -m http.server 8000",
+    "serve": "npx serve .",
+    "lint": "echo 'No linting configured - pure ESM module'",
+    "test": "echo 'No tests configured - browser testing required'"
+  },
+  "keywords": [
+    "security",
+    "secrets",
+    "encryption",
+    "devtools",
+    "browser",
+    "esm",
+    "burn-after-read",
+    "zero-trust"
+  ],
+  "author": "johnny-stasher",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stasher-dev/stasher-web.git"
+  },
+  "bugs": {
+    "url": "https://github.com/stasher-dev/stasher-web/issues"
+  },
+  "homepage": "https://stasher.dev",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
