@@ -158,11 +158,6 @@ npx enstash "secret"</pre>
 </body>
 </html>`;
 
-// For now, redirect to the separate .mjs file 
-// We'll serve the actual module from GitHub raw
-const MODULE_REDIRECT = `// Redirect to the actual module
-export * from 'https://raw.githubusercontent.com/stasher-dev/stasher-web/main/stasher-web.mjs';
-export { default } from 'https://raw.githubusercontent.com/stasher-dev/stasher-web/main/stasher-web.mjs';`;
 
 export default {
   async fetch(request, env, ctx) {
@@ -180,13 +175,20 @@ export default {
       });
     }
     
-    // Serve the ESM module (redirect to GitHub raw)
+    // Serve the ESM module from R2 storage
     if (url.pathname === '/stasher-web.mjs') {
-      return new Response(MODULE_REDIRECT, {
+      const object = await env.R2_BUCKET.get('stasher-web.mjs');
+      if (!object) {
+        return new Response('Module not found', { status: 404 });
+      }
+      
+      return new Response(object.body, {
         headers: {
           'Content-Type': 'application/javascript; charset=utf-8',
           'Cache-Control': 'public, max-age=3600',
-          'X-Content-Type-Options': 'nosniff'
+          'X-Content-Type-Options': 'nosniff',
+          'ETag': object.etag,
+          'Last-Modified': object.uploaded.toUTCString()
         }
       });
     }
