@@ -10,6 +10,7 @@
     "README.md"
   ],
   "scripts": {
+    "build": "node esbuild.config.js",
     "dev": "python -m http.server 8000",
     "serve": "npx serve .",
     "lint": "echo 'No linting configured - pure ESM module'",
@@ -37,5 +38,10 @@
   "homepage": "https://stasher.dev",
   "engines": {
     "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.1.0",
+    "esbuild": "^0.25.8",
+    "typescript": "^5.9.2"
   }
 }

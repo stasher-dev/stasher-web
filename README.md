@@ -23,34 +23,35 @@ Basically, it's like a Mission Impossible tape, but for API keys.
 
 ## Quick Start
 
-**Option 1: Bookmarklet (Recommended)**
-1. Visit **[stasher.dev/install](https://stasher.dev)** 
-2. Drag the "Install Stasher" button to your bookmarks bar
-3. Click the bookmark on any page to load Stasher
+**Bookmarklet (Recommended)**
+1. Copy this bookmarklet URL:
+   ```javascript
+   javascript:(function(){var w=window.open('https://app.stasher.dev/','stasher','width=400,height=300,resizable=yes,scrollbars=no,status=no,location=no,toolbar=no,menubar=no');if(w){w.focus();}else{alert('Popup blocked - please allow popups for this site');}})();
+   ```
+2. Create a new bookmark and paste the URL above
+3. Click the bookmark on any page to open Stasher in a popup window
 
-**Option 2: Manual Import**
-```js
-// Paste in DevTools console
-await import("https://stasher.dev/stasher-web.mjs").then(m => m.default())
-```
+**Direct Access**
+Visit **[app.stasher.dev](https://app.stasher.dev)** directly
 
 ## Usage
 
-Once loaded, use these commands in your browser console:
+The popup interface provides three simple operations:
 
-```js
-// Store a secret
-enstash`my secret password`
-// → Returns: a1b2c3d4-e5f6-7890-abcd-ef1234567890:base64key...
+1. **enstash** - Encrypt and store a secret
+   - Enter your secret text
+   - Click "enstash" 
+   - Get back: `a1b2c3d4-e5f6-7890-abcd-ef1234567890:base64key...`
 
-// Retrieve secret (burns after reading)  
-destash`a1b2c3d4-e5f6-7890-abcd-ef1234567890:base64key...`
-// → Returns: "my secret password"
+2. **destash** - Retrieve a secret (burns after reading)
+   - Enter the full token: `uuid:key`
+   - Click "destash"
+   - Get back your original secret
 
-// Delete secret manually
-unstash`a1b2c3d4-e5f6-7890-abcd-ef1234567890`
-// → Returns: "Secret deleted: a1b2c3d4..."
-```
+3. **unstash** - Delete a secret manually  
+   - Enter token or just the UUID
+   - Click "unstash"
+   - Secret is permanently deleted
 
 ## Real-World Examples
 

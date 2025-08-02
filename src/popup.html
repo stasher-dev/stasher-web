@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stasher</title>
+    <style>
+        body {
+            font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+            margin: 0;
+            padding: 24px;
+            padding-top: 80px;
+            background: #1e1e1e;
+            color: #cccccc;
+            overflow: hidden;
+        }
+        
+        .branding {
+            position: absolute;
+            top: 16px;
+            left: 12px;
+            color: #00bfff;
+            font-size: 36px;
+            font-weight: bold;
+        }
+        
+        .version {
+            position: absolute;
+            bottom: 16px;
+            left: 12px;
+            color: #565656;
+            font-size: 12px;
+        }
+        
+        .operations {
+            margin-top: 8px;
+            padding: 0 12px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 0px;
+            justify-content: flex-end;
+        }
+        
+        .operation {
+            background: none;
+            border: none;
+            font-family: inherit;
+            font-size: 18px;
+            font-weight: normal;
+            cursor: pointer;
+            padding: 12px 6px;
+            transition: all 0.2s ease;
+            text-transform: lowercase;
+        }
+        
+        .operation.enstash {
+            color: #90ee90;
+        }
+        
+        .operation.destash {
+            color: #daa520;
+        }
+        
+        .operation.unstash {
+            color: #cd5c5c;
+        }
+
+        .operation:hover {
+            opacity: 0.8;
+        }
+        
+        .operation:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .operation.working {
+            cursor: wait;
+        }
+        
+        body.working {
+            cursor: wait;
+        }
+        
+        .input-section {
+            margin-bottom: 24px;
+            padding: 0 12px;
+            position: relative;
+        }
+        
+        .clear-section {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 16px;
+            padding: 0 12px;
+        }
+        
+        .clear-button {
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 10px;
+            cursor: pointer;
+            padding: 4px 8px 16px 8px;
+            transition: all 0.2s ease;
+        }
+        
+        .clear-button:hover {
+            opacity: 0.8;
+        }
+        
+        .clear-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .input {
+            width: calc(100% - 32px);
+            background: #2d2d30;
+            border: 1px solid #3e3e42;
+            border-radius: 6px;
+            padding: 14px 16px;
+            color: #cccccc;
+            font-family: inherit;
+            font-size: 14px;
+            resize: none;
+            min-height: 20px;
+            max-height: 20px;
+            overflow: hidden;
+            text-align: left;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        .input:focus {
+            outline: none;
+            border-color: #00bfff;
+            box-shadow: 0 0 0 2px rgba(0, 191, 255, 0.2), inset 0 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        .input::placeholder {
+            color: #565656;
+        }
+        
+        .message {
+            margin-top: 16px;
+            font-size: 12px;
+            color: #565656;
+            text-align: left;
+            min-height: 16px;
+        }
+        
+        .message.success {
+            color: #90ee90;
+        }
+        
+        .message.error {
+            color: #cd5c5c;
+        }
+    </style>
+</head>
+<body>
+    <div class="branding">stasher</div>
+    
+    <div class="clear-section">
+        <button class="clear-button" id="clear-button">clear</button>
+    </div>
+    
+    <div class="input-section">
+        <input type="text" class="input" id="main-input" placeholder="enter secret, token, or uuid" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <div class="message" id="message"></div>
+    </div>
+    
+    <div class="operations">
+        <div class="button-group">
+            <button class="operation enstash" data-mode="enstash">enstash</button>
+            <button class="operation destash" data-mode="destash">destash</button>
+            <button class="operation unstash" data-mode="unstash">unstash</button>
+        </div>
+    </div>
+    
+    <div class="version">v1.0</div>
+    
+    <script type="module" src="./popup.js"></script>
+</body>
+</html>
