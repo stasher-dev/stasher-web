@@ -738,15 +738,17 @@ function createStasherModal() {
 
 /**
  * Default export - Loader function for DevTools installation
- * Creates global stasher function that shows modal
+ * Opens modal immediately and creates global stasher function
  */
 export default function install() {
-  // Create global stasher function
+  // Create global stasher function for future use
   globalThis.stasher = createStasherModal;
   
   console.log('Stasher Web loaded!');
-  console.log('Usage: stasher() - opens secure modal');
   
-  // Return the modal function
+  // Open modal immediately
+  const modal = createStasherModal();
+  
+  // Return the modal function for direct use
   return createStasherModal;
 }
