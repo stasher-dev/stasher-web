@@ -40,7 +40,7 @@ const POPUP_CONTENT = `<!DOCTYPE html>
         
         .operations {
             margin-top: 8px;
-            padding: 0 12px;
+            padding: 4px;
         }
         
         .button-group {
@@ -56,8 +56,7 @@ const POPUP_CONTENT = `<!DOCTYPE html>
             font-size: 18px;
             font-weight: normal;
             cursor: pointer;
-            padding: 12px 24px;
-            border-radius: 4px;
+            padding: 12px 6px;
             transition: all 0.2s ease;
             text-transform: lowercase;
         }
@@ -92,7 +91,7 @@ const POPUP_CONTENT = `<!DOCTYPE html>
         .clear-section {
             display: flex;
             justify-content: flex-end;
-            margin-bottom: 16px;
+            margin-bottom: 8px;
             padding: 0 12px;
         }
         
@@ -222,7 +221,7 @@ const POPUP_CONTENT = `<!DOCTYPE html>
 
         function formatStashToken(id, keyBuffer) {
             const keyBase64 = arrayBufferToBase64(keyBuffer);
-            return \`\\\${id}:\\\${keyBase64}\`;
+            return \`\${id}:\${keyBase64}\`;
         }
 
         function decodeStashToken(token) {
@@ -281,7 +280,7 @@ const POPUP_CONTENT = `<!DOCTYPE html>
             const ciphertext = base64ToArrayBuffer(payload.ciphertext);
             
             if (iv.byteLength !== IV_LENGTH) {
-                throw new Error(\`Invalid IV length: must be \${IV_LENGTH} bytes\`);
+                throw new Error(\`Invalid IV length: must be \\\${IV_LENGTH} bytes\`);
             }
             if (tag.byteLength !== TAG_LENGTH) {
                 throw new Error(\`Invalid auth tag length: must be \${TAG_LENGTH} bytes\`);
@@ -537,7 +536,7 @@ export default {
           'Cache-Control': 'public, max-age=3600',
           'X-Frame-Options': 'DENY',
           'X-Content-Type-Options': 'nosniff',
-          'Content-Security-Policy': "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline';"
+          'Content-Security-Policy': "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self' https://api.stasher.dev;"
         }
       });
     }
