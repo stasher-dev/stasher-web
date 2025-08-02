@@ -3,149 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stasher DevTools</title>
+    <title>Stasher</title>
     <style>
         body {
-            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-            line-height: 1.5;
-            color: #333;
-            background: #f8f9fa;
+            font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
             margin: 0;
-            padding: 2rem;
-        }
-        
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            padding: 2rem;
-            border: 1px solid #ddd;
-        }
-        
-        h1 {
-            margin: 0 0 1rem 0;
-            font-size: 1.5rem;
+            padding: 0;
+            background: #1e1e1e;
+            color: #cccccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
         }
         
         .install-button {
-            display: inline-block;
-            background: #000;
-            color: white;
-            padding: 0.75rem 1.5rem;
+            background: #39ff14;
+            color: #000;
+            padding: 1rem 2rem;
             text-decoration: none;
             border: none;
-            cursor: pointer;
-            margin: 1rem 0;
+            cursor: grab;
+            font-family: inherit;
+            font-size: 16px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            position: relative;
         }
         
         .install-button:hover {
-            background: #333;
+            opacity: 0.8;
         }
         
-        .code {
-            background: #f5f5f5;
-            padding: 1rem;
-            border: 1px solid #ddd;
-            overflow-x: auto;
-            margin: 1rem 0;
+        .install-button:active {
+            cursor: grabbing;
         }
         
-        .section {
-            margin: 2rem 0;
-        }
-        
-        pre {
-            margin: 0;
-        }
-        
-        ul {
-            padding-left: 1.5rem;
-        }
-        
-        li {
-            margin: 0.5rem 0;
+        .instruction {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 10px;
+            color: #969696;
+            font-size: 12px;
+            text-align: center;
+            white-space: nowrap;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Stasher DevTools</h1>
-        <p>Secure secret sharing in browser console. Zero install, burn-after-read.</p>
-        
-        <div class="section">
-            <h2>Why?</h2>
-            <p>I just wanted to share a password.<br>
-            Not spin up a server. Not register for some "secure" web app. Not trust a Slack thread.<br>  
-            Just. Send. A. Secret.</p>
-            
-            <p>So I built Stasher — for people who are busy, paranoid, or both.</p>
-            
-            <ul>
-                <li>Works instantly in any browser</li>
-                <li>Encrypts everything before it ever leaves your machine</li>
-                <li>Secrets self-destruct after one read or 10 minutes</li>
-                <li>No account, no login, no metadata, no snooping</li>
-            </ul>
-            
-            <p>Basically, it's like a Mission Impossible tape, but for API keys.</p>
-        </div>
-        
-        <div class="section">
-            <h2>Install</h2>
-            <p>Drag this to your bookmarks bar:</p>
-            <a href="javascript:(async()=>{await import('https://install.stasher.dev/stasher-web.mjs').then(m=>m.default())})();" 
-               class="install-button">Install Stasher</a>
-               
-            <p>Or paste in DevTools console:</p>
-            <div class="code">
-                <pre>await import("https://install.stasher.dev/stasher-web.mjs").then(m => m.default())</pre>
-            </div>
-        </div>
-        
-        <div class="section">
-            <h2>Usage</h2>
-            <div class="code">
-                <pre>enstash`my secret`           // store
-destash`uuid:key`             // retrieve (burns)
-unstash`uuid`                 // delete</pre>
-            </div>
-        </div>
-        
-        <div class="section">
-            <h2>Examples</h2>
-            <div class="code">
-                <pre>enstash`API_KEY=sk-123`
-enstash`password123`
-enstash`-----BEGIN PRIVATE KEY-----
-...
------END PRIVATE KEY-----`</pre>
-            </div>
-        </div>
-        
-        <div class="section">
-            <h2>Features</h2>
-            <ul>
-                <li>AES-256-GCM client-side encryption</li>
-                <li>Burn-after-read (one-time access)</li>
-                <li>10-minute auto-expiry</li>
-                <li>Zero-knowledge server</li>
-                <li>No logs, no tracking</li>
-            </ul>
-        </div>
-        
-        <div class="section">
-            <h2>CLI Version</h2>
-            <div class="code">
-                <pre>npm install -g stasher-cli
-npx enstash "secret"</pre>
-            </div>
-        </div>
-        
-        <div class="section">
-            <p><a href="https://github.com/stasher-dev/stasher-web">Source</a> | 
-               <a href="https://github.com/stasher-dev/stasher-cli">CLI</a> | 
-               <a href="https://github.com/stasher-dev/stasher-worker">Worker</a></p>
-        </div>
+    <div style="position: relative; display: inline-block;">
+        <a href="javascript:(function(){var w=500,h=600,l=(screen.width-w)/2,t=(screen.height-h)/2;window.open('https://install.stasher.dev/stasher','stasher','width='+w+',height='+h+',left='+l+',top='+t);})()" 
+           onclick="return addBookmark(event);" 
+           ondragstart="dragBookmarklet(event)"
+           class="install-button">Install Stasher</a>
+        <div class="instruction">← Drag to bookmarks bar</div>
     </div>
+    
+    <script>
+        function dragBookmarklet(event) {
+            const bookmarkUrl = "javascript:(function(){var w=700,h=400,l=(screen.width-w)/2,t=(screen.height-h)/2;window.open('https://install.stasher.dev/stasher','stasher','width='+w+',height='+h+',left='+l+',top='+t);})()";
+            const bookmarkTitle = "stasher";
+            
+            // Set the bookmark URL and title for dragging
+            event.dataTransfer.setData('text/uri-list', bookmarkUrl);
+            event.dataTransfer.setData('text/plain', bookmarkUrl);
+            event.dataTransfer.setData('text/x-moz-url', bookmarkUrl + '\n' + bookmarkTitle);
+            event.dataTransfer.setData('text/html', '<a href="' + bookmarkUrl + '">' + bookmarkTitle + '</a>');
+            event.dataTransfer.effectAllowed = 'copy';
+        }
+        
+        function addBookmark(event) {
+            // Try to use the browser's built-in bookmark functionality
+            if (navigator.userAgent.indexOf('Chrome') > -1 || navigator.userAgent.indexOf('Safari') > -1) {
+                // For Chrome/Safari, show drag instruction
+                alert('To install Stasher:\n\n→ Drag the button to your bookmarks bar\n\nThen click the bookmark on any website to use Stasher!');
+                return false; // Prevent default href action
+            } else if (window.sidebar && window.sidebar.addPanel) {
+                // Firefox
+                event.preventDefault();
+                const bookmarkUrl = "javascript:(function(){var w=700,h=400,l=(screen.width-w)/2,t=(screen.height-h)/2;window.open('https://install.stasher.dev/stasher','stasher','width='+w+',height='+h+',left='+l+',top='+t);})()";
+                window.sidebar.addPanel('stasher', bookmarkUrl, '');
+                return false;
+            } else if (window.external && ('AddFavorite' in window.external)) {
+                // Internet Explorer
+                event.preventDefault();
+                const bookmarkUrl = "javascript:(function(){var w=700,h=400,l=(screen.width-w)/2,t=(screen.height-h)/2;window.open('https://install.stasher.dev/stasher','stasher','width='+w+',height='+h+',left='+l+',top='+t);})()";
+                window.external.AddFavorite(bookmarkUrl, 'stasher');
+                return false;
+            } else {
+                // Fallback - show instruction and let href work
+                alert('To install Stasher:\n\n→ Drag the button to your bookmarks bar\n\nThen click the bookmark on any website to use Stasher!');
+                return false;
+            }
+        }
+    </script>
 </body>
 </html>
