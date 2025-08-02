@@ -353,15 +353,400 @@ export async function unstash(strings, ...values) {
 }
 
 /**
+ * Create and show the Stasher modal using Shadow DOM
+ */
+function createStasherModal() {
+  // Create modal container
+  const modalContainer = document.createElement('div');
+  modalContainer.id = 'stasher-modal-container';
+  
+  // Attach closed Shadow DOM for security
+  const shadowRoot = modalContainer.attachShadow({ mode: 'closed' });
+  
+  // Modal HTML structure
+  shadowRoot.innerHTML = `
+    <style>
+      :host {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 999999;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      }
+      
+      .backdrop {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(4px);
+      }
+      
+      .modal {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 500px;
+        max-width: 90vw;
+        background: #1e1e1e;
+        border: 1px solid #3e3e42;
+        border-radius: 8px;
+        color: #cccccc;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      }
+      
+      .header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #3e3e42;
+        display: flex;
+        justify-content: flex-end;
+      }
+      
+      .close {
+        background: none;
+        border: none;
+        color: #969696;
+        font-size: 18px;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      
+      .close:hover {
+        color: #cccccc;
+      }
+      
+      .content {
+        padding: 24px;
+        position: relative;
+        min-height: 200px;
+      }
+      
+      .operations {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 24px;
+        justify-content: center;
+      }
+      
+      .operation {
+        background: none;
+        border: none;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        padding: 8px 0;
+        transition: all 0.2s ease;
+      }
+      
+      .operation.stash {
+        color: #39ff14;
+      }
+      
+      .operation.retrieve {
+        color: #ffbf00;
+      }
+      
+      .operation.delete {
+        color: #ff073a;
+      }
+      
+      .operation:not(.active) {
+        opacity: 0.5;
+      }
+      
+      .operation:hover {
+        opacity: 1;
+      }
+      
+      .input-section {
+        margin-bottom: 24px;
+      }
+      
+      .label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: #969696;
+      }
+      
+      .input {
+        width: 100%;
+        background: #2d2d30;
+        border: 1px solid #3e3e42;
+        border-radius: 4px;
+        padding: 12px;
+        color: #cccccc;
+        font-family: inherit;
+        font-size: 13px;
+        resize: vertical;
+        min-height: 80px;
+      }
+      
+      .input:focus {
+        outline: none;
+        border-color: var(--active-color);
+        box-shadow: 0 0 0 1px var(--active-color);
+      }
+      
+      .button-section {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 16px;
+      }
+      
+      .action-button {
+        background: var(--active-color);
+        border: none;
+        border-radius: 4px;
+        padding: 10px 20px;
+        color: #000;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      
+      .action-button:hover {
+        opacity: 0.8;
+      }
+      
+      .action-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      
+      .result {
+        background: #2d2d30;
+        border: 1px solid #3e3e42;
+        border-radius: 4px;
+        padding: 12px;
+        margin-top: 16px;
+        font-family: inherit;
+        font-size: 13px;
+        word-break: break-all;
+        display: none;
+      }
+      
+      .result.success {
+        border-color: #39ff14;
+        color: #39ff14;
+      }
+      
+      .result.error {
+        border-color: #ff073a;
+        color: #ff073a;
+      }
+      
+      .branding {
+        position: absolute;
+        bottom: 16px;
+        left: 20px;
+        color: #565656;
+        font-size: 12px;
+      }
+      
+      /* Mobile responsive */
+      @media (max-width: 600px) {
+        .modal {
+          width: 95vw;
+          margin: 20px;
+        }
+        
+        .operations {
+          gap: 16px;
+        }
+        
+        .operation {
+          font-size: 13px;
+        }
+      }
+    </style>
+    
+    <div class="backdrop"></div>
+    <div class="modal">
+      <div class="header">
+        <button class="close">×</button>
+      </div>
+      
+      <div class="content">
+        <div class="operations">
+          <button class="operation stash active" data-mode="stash">STASH</button>
+          <button class="operation retrieve" data-mode="retrieve">RETRIEVE</button>
+          <button class="operation delete" data-mode="delete">DELETE</button>
+        </div>
+        
+        <div class="input-section">
+          <label class="label" id="input-label">Enter your secret:</label>
+          <textarea class="input" id="main-input" placeholder="Type or paste here..."></textarea>
+        </div>
+        
+        <div class="button-section">
+          <button class="action-button" id="action-button">STASH</button>
+        </div>
+        
+        <div class="result" id="result"></div>
+        
+        <div class="branding">stasher</div>
+      </div>
+    </div>
+  `;
+  
+  // Get elements
+  const backdrop = shadowRoot.querySelector('.backdrop');
+  const closeBtn = shadowRoot.querySelector('.close');
+  const operations = shadowRoot.querySelectorAll('.operation');
+  const input = shadowRoot.querySelector('#main-input');
+  const label = shadowRoot.querySelector('#input-label');
+  const actionButton = shadowRoot.querySelector('#action-button');
+  const result = shadowRoot.querySelector('#result');
+  const modal = shadowRoot.querySelector('.modal');
+  
+  let currentMode = 'stash';
+  
+  // Update CSS custom property for active color
+  function updateActiveColor() {
+    const colors = {
+      stash: '#39ff14',
+      retrieve: '#ffbf00', 
+      delete: '#ff073a'
+    };
+    modal.style.setProperty('--active-color', colors[currentMode]);
+  }
+  
+  // Update UI based on current mode
+  function updateUI() {
+    updateActiveColor();
+    
+    // Update operation buttons
+    operations.forEach(op => {
+      op.classList.toggle('active', op.dataset.mode === currentMode);
+    });
+    
+    // Update input and button text
+    switch(currentMode) {
+      case 'stash':
+        label.textContent = 'Enter your secret:';
+        input.placeholder = 'Type or paste your secret here...';
+        actionButton.textContent = 'STASH';
+        break;
+      case 'retrieve':
+        label.textContent = 'Enter token:';
+        input.placeholder = 'Paste your token here (uuid:key...)';
+        actionButton.textContent = 'RETRIEVE';
+        break;
+      case 'delete':
+        label.textContent = 'Enter UUID or token:';
+        input.placeholder = 'Paste UUID or full token here...';
+        actionButton.textContent = 'DELETE';
+        break;
+    }
+    
+    // Clear input and result
+    input.value = '';
+    result.style.display = 'none';
+    result.className = 'result';
+  }
+  
+  // Show result
+  function showResult(text, isError = false) {
+    result.textContent = text;
+    result.className = \`result \${isError ? 'error' : 'success'}\`;
+    result.style.display = 'block';
+  }
+  
+  // Handle operation switching
+  operations.forEach(op => {
+    op.addEventListener('click', () => {
+      currentMode = op.dataset.mode;
+      updateUI();
+    });
+  });
+  
+  // Handle action button
+  actionButton.addEventListener('click', async () => {
+    const inputValue = input.value.trim();
+    if (!inputValue) return;
+    
+    actionButton.disabled = true;
+    actionButton.textContent = 'WORKING...';
+    
+    try {
+      let result_text;
+      
+      switch(currentMode) {
+        case 'stash':
+          result_text = await enstash([inputValue], '');
+          showResult(\`Token: \${result_text}\`);
+          break;
+          
+        case 'retrieve':
+          result_text = await destash([inputValue], '');
+          showResult(\`Secret: \${result_text}\`);
+          break;
+          
+        case 'delete':
+          result_text = await unstash([inputValue], '');
+          showResult(result_text);
+          break;
+      }
+      
+      // Clear input after successful operation
+      input.value = '';
+      
+    } catch (error) {
+      showResult(\`Error: \${error.message}\`, true);
+    } finally {
+      actionButton.disabled = false;
+      updateUI(); // Reset button text
+    }
+  });
+  
+  // Handle close
+  function closeModal() {
+    document.body.removeChild(modalContainer);
+  }
+  
+  closeBtn.addEventListener('click', closeModal);
+  backdrop.addEventListener('click', closeModal);
+  
+  // Handle ESC key
+  function handleKeydown(e) {
+    if (e.key === 'Escape') {
+      closeModal();
+      document.removeEventListener('keydown', handleKeydown);
+    }
+  }
+  
+  document.addEventListener('keydown', handleKeydown);
+  
+  // Initialize UI
+  updateUI();
+  
+  // Add to page and focus input
+  document.body.appendChild(modalContainer);
+  input.focus();
+  
+  return modalContainer;
+}
+
+/**
  * Default export - Loader function for DevTools installation
- * Adds enstash, destash, unstash to global scope
+ * Creates global stasher function that shows modal
  */
 export default function install() {
-  // Add functions to global scope
-  Object.assign(globalThis, { enstash, destash, unstash });
+  // Create global stasher function
+  globalThis.stasher = createStasherModal;
   
-  console.log(`Stasher Web loaded!`);
+  console.log('Stasher Web loaded!');
+  console.log('Usage: stasher() - opens secure modal');
   
-  // Return the functions for direct use
-  return { enstash, destash, unstash };
+  // Return the modal function
+  return createStasherModal;
 }
