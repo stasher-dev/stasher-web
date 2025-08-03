@@ -40,11 +40,11 @@ operations.forEach(op => {
         // Check for empty input
         if (!inputValue) {
             if (mode === 'enstash') {
-                showMessage('No secret to stash', true);
+                showMessage('Input secret to stash', true);
             } else if (mode === 'destash') {
-                showMessage('No stash id to retreive', true);
+                showMessage('Input a stash id to retreive', true);
             } else if (mode === 'unstash') {
-                showMessage('No stash id to unstash', true);
+                showMessage('Input a stash id to unstash', true);
             }
             return;
         }
