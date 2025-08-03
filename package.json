@@ -11,6 +11,7 @@
   ],
   "scripts": {
     "build": "node esbuild.config.js",
+    "deploy": "npm run build && npx wrangler deploy",
     "dev": "python -m http.server 8000",
     "serve": "npx serve .",
     "lint": "echo 'No linting configured - pure ESM module'",
