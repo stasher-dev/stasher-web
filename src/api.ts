@@ -47,7 +47,6 @@ export async function performEnstash(secret: string): Promise<string> {
         return token;
         
     } catch (error) {
-        console.error('Enstash failed:', error.message);
         throw error;
     }
 }
@@ -57,7 +56,7 @@ export async function performDestash(token: string): Promise<string> {
         const { id, keyBuffer } = decodeStashToken(token);
         
         if (!validateUUID(id)) {
-            throw new Error('Invalid UUID format in token');
+            throw new Error('Invalid Stash ID');
         }
         
         const response = await fetch(`${getApiBaseUrl()}/destash/${id}`, {
@@ -67,7 +66,6 @@ export async function performDestash(token: string): Promise<string> {
         if (!response.ok) {
             if (response.status === 404) {
                 const message = 'Stash not found';
-                console.warn(`${message}`);
                 throw new Error(message);
             }
             const errorText = await response.text();
@@ -80,7 +78,6 @@ export async function performDestash(token: string): Promise<string> {
         return secret;
         
     } catch (error) {
-        console.error('Destash failed:', error.message);
         throw error;
     }
 }
@@ -96,7 +93,7 @@ export async function performUnstash(tokenOrId: string): Promise<string> {
         }
         
         if (!validateUUID(id)) {
-            throw new Error('Invalid UUID format');
+            throw new Error('Invalid Stash ID');
         }
         
         const response = await fetch(`${getApiBaseUrl()}/unstash/${id}`, {
@@ -105,8 +102,7 @@ export async function performUnstash(tokenOrId: string): Promise<string> {
         
         if (!response.ok) {
             if (response.status === 404) {
-                const message = 'Stash not found (may have already been read or expired)';
-                console.warn(`${message}`);
+                const message = 'Stash not found';
                 throw new Error(message);
             }
             const errorText = await response.text();
@@ -119,7 +115,6 @@ export async function performUnstash(tokenOrId: string): Promise<string> {
         return message;
         
     } catch (error) {
-        console.error('Unstash failed:', error.message);
         throw error;
     }
 }

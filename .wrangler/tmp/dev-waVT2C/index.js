@@ -128,7 +128,6 @@ var POPUP_CONTENT = `<!DOCTYPE html>
             font-family: inherit;
             font-size: 10px;
             cursor: pointer;
-            padding: 4px 8px 16px 8px;
             transition: all 0.2s ease;
         }
         
