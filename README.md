@@ -96,8 +96,8 @@ Works in all modern browsers with:
 
 ## Related Projects
 
-- **[Stasher CLI](https://github.com/stasher-dev/stasher-cli)** - Terminal version (`npm install -g stasher-cli or npx`)
-- **[Stasher Worker](https://github.com/stasher-dev/stasher-worker)** - Cloudflare Workers API backend
+- **[Stasher CLI](https://github.com/stasher-dev/stasher-cli)** - Terminal version (`npm install -g stasher-cli` or `npx`)
+- **[Stasher API](https://github.com/stasher-dev/stasher-api)** - Cloudflare Workers API backend (open source)
 
 ## 🚀 Deployment
 
