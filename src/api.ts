@@ -72,6 +72,13 @@ export async function performDestash(token: string): Promise<string> {
                 const message = 'Stash not found';
                 throw new Error(message);
             }
+            if (response.status === 410) {
+                const errorResponse = await response.json();
+                const errorMessage = errorResponse.error === 'Expired' 
+                    ? 'This stash has expired' 
+                    : 'This stash has already been consumed';
+                throw new Error(errorMessage);
+            }
             const errorText = await response.text();
             throw new Error(`API error: ${response.status} ${errorText}`);
         }
@@ -112,6 +119,13 @@ export async function performUnstash(tokenOrId: string): Promise<string> {
             if (response.status === 404) {
                 const message = 'Stash not found';
                 throw new Error(message);
+            }
+            if (response.status === 410) {
+                const errorResponse = await response.json();
+                const errorMessage = errorResponse.error === 'Expired' 
+                    ? 'This stash has expired' 
+                    : 'This stash has already been consumed';
+                throw new Error(errorMessage);
             }
             const errorText = await response.text();
             throw new Error(`API error: ${response.status} ${errorText}`);
