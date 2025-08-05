@@ -24,12 +24,12 @@ Basically, it's like a Mission Impossible tape, but for API keys.
 ## Quick Start
 
 **Bookmarklet (Recommended)**
-1. Copy this bookmarklet URL:
+1. Visit **[stasher.dev](https://stasher.dev)** and drag the bookmarklet to your bookmark bar
+2. Or create a bookmark manually with this URL:
    ```javascript
-   javascript:(function(){var w=window.open('https://app.stasher.dev/','stasher','width=400,height=300,resizable=yes,scrollbars=no,status=no,location=no,toolbar=no,menubar=no');if(w){w.focus();}else{alert('Popup blocked - please allow popups for this site');}})();
+   javascript:(function(){var left=Math.floor(screen.width/2-400);var top=Math.floor(screen.height/2-225);var features='width=800,height=450,resizable=yes,scrollbars=no,status=no,location=no,toolbar=no,menubar=no,left='+left+',top='+top+',noopener,noreferrer';var w=window.open('https://app.stasher.dev/','stasher',features);if(w){w.focus();}else{alert("Popup blocked – please allow popups for this site");}})();
    ```
-2. Create a new bookmark and paste the URL above
-3. Click the bookmark on any page to open Stasher in a popup window
+3. Click the bookmark on any page to open Stasher in a secure popup window
 
 **Direct Access**
 Visit **[app.stasher.dev](https://app.stasher.dev)** directly
@@ -73,26 +73,73 @@ MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7...
 
 ## Security Features
 
-- **AES-256-GCM Encryption** - Military-grade encryption in your browser
-- **Zero-Knowledge** - Server never sees your plaintext secrets  
+### Fortress-Level Security Architecture
+
+**Crypto Isolation**
+- **Web Worker Thread Isolation** - All cryptographic operations run in isolated worker threads
+- **AES-256-GCM Encryption** - Military-grade encryption with secure memory wiping
+- **Blob URL Workers** - Dynamic worker creation prevents code injection attacks
+- **Zero-Knowledge** - Server never sees your plaintext secrets
+
+**Transport & Content Security**
+- **HSTS Preload Ready** - 2-year Strict-Transport-Security with subdomain protection
+- **Enhanced CSP** - Strict Content Security Policy with monitoring for future migration
+- **Origin Isolation** - Cross-Origin-Opener-Policy and Cross-Origin-Resource-Policy
+- **Accept Header Validation** - Defense-in-depth content type checking
+
+**Attack Surface Reduction**
+- **X-Frame-Options: DENY** - Prevents clickjacking attacks
+- **Comprehensive Permissions Policy** - Blocks geolocation, camera, microphone access
+- **No Referrer Leakage** - Referrer-Policy: no-referrer
+- **Window.open() Sandboxing** - Natural process isolation via popup windows
+
+**Runtime Security**
 - **Burn-After-Read** - Secrets deleted after first access
 - **Auto-Expiry** - 10-minute maximum lifetime
-- **Client-Side Crypto** - All encryption happens in your browser
-- **No Logs** - Secrets never logged to console or stored
+- **Memory Wiping** - Cryptographic keys cleared from memory after use
+- **Timeout Cleanup** - Automatic resource cleanup prevents memory leaks
 
 ## Architecture
 
-**Frontend**: Pure ESM module with SubtleCrypto  
-**Backend**: Cloudflare Workers + KV storage  
-**Encryption**: AES-256-GCM with unique keys per secret  
-**Distribution**: CDN-hosted, zero dependencies  
+### Modern Security-First Design
 
-## 🌐 Browser Support
+**Frontend Architecture**
+- **Web Worker Crypto Isolation** - All encryption runs in dedicated worker threads
+- **Cloudflare Workers Runtime** - Edge computing with global distribution
+- **Build-Time Code Injection** - Crypto worker code embedded at build time
+- **Zero External Dependencies** - Self-contained security model
 
-Works in all modern browsers with:
-- **SubtleCrypto API** (Chrome, Firefox, Safari, Edge)
-- **ES Modules** (Native `import()` support)
-- **Fetch API** (Standard in all evergreen browsers)
+**⚡ Backend Infrastructure**
+- **Cloudflare Workers + KV** - Serverless edge computing with global key-value storage
+- **Enhanced Security Headers** - Comprehensive HTTP security header stack
+- **Content Validation** - Accept header checking and content type enforcement
+- **HSTS Preload Ready** - Transport Layer Security with preload list eligibility
+
+**Crypto Architecture**
+- **Thread-Isolated AES-256-GCM** - Military-grade encryption in isolated Web Workers
+- **Unique Keys Per Secret** - Each secret gets its own encryption key
+- **Secure Memory Management** - Cryptographic material wiped after use
+- **Blob URL Worker Creation** - Dynamic worker instantiation prevents injection
+
+**Distribution & Access**
+- **CDN Global Edge** - Low-latency access worldwide via Cloudflare's network
+- **Bookmarklet Integration** - One-click access from any webpage
+- **Window.open() Sandboxing** - Natural browser process isolation
+- **Responsive Design** - Works across desktop and mobile browsers  
+
+## Browser Support
+
+**Requires Modern Browser Features:**
+- **Web Workers** - For crypto thread isolation (Chrome, Firefox, Safari, Edge)
+- **SubtleCrypto API** - For AES-256-GCM encryption (All evergreen browsers)
+- **Blob URLs** - For dynamic worker creation (Universal support)
+- **ES Modules** - Native `import()` support (IE11+ excluded)
+- **Fetch API** - For API communication (Standard in all modern browsers)
+
+**Security Features Enabled:**
+- **Content Security Policy Level 3** - Enhanced CSP with report-only monitoring
+- **Permissions Policy** - Advanced permission controls (Chromium-based browsers)
+- **Cross-Origin Policies** - COOP/CORP isolation (Chrome 83+, Firefox 79+)
 
 ## Related Projects
 
