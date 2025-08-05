@@ -48,6 +48,10 @@ export async function performEnstash(secret: string): Promise<string> {
         
     } catch (error) {
         throw error;
+    } finally {
+        // Clean up crypto worker after encrypt operation
+        const { terminateCryptoManager } = await import('./crypto-manager');
+        terminateCryptoManager();
     }
 }
 
@@ -79,6 +83,10 @@ export async function performDestash(token: string): Promise<string> {
         
     } catch (error) {
         throw error;
+    } finally {
+        // Clean up crypto worker after decrypt operation (burn-after-read for worker too)
+        const { terminateCryptoManager } = await import('./crypto-manager');
+        terminateCryptoManager();
     }
 }
 

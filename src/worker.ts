@@ -18,7 +18,7 @@ export default {
           'Cache-Control': 'public, max-age=3600',
           'X-Frame-Options': 'DENY',
           'X-Content-Type-Options': 'nosniff',
-          'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://api.stasher.dev;"
+          'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://api.stasher.dev; worker-src blob:;"
         }
       });
     }

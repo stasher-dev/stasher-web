@@ -1,9 +1,9 @@
 import { build } from 'esbuild';
 import { readFileSync, writeFileSync } from 'fs';
 
-// Build the popup JavaScript first
-const popupBuild = await build({
-  entryPoints: ['src/popup.ts'],
+// Build the crypto worker first
+const cryptoWorkerBuild = await build({
+  entryPoints: ['src/crypto-worker.ts'],
   bundle: true,
   format: 'iife',
   target: 'es2022',
@@ -14,13 +14,36 @@ const popupBuild = await build({
   write: false
 });
 
-const popupJS = popupBuild.outputFiles[0].text;
+const cryptoWorkerJS = cryptoWorkerBuild.outputFiles[0].text;
+
+// Build the stasher app JavaScript
+const stasherAppBuild = await build({
+  entryPoints: ['src/stasher_app.ts'],
+  bundle: true,
+  format: 'iife',
+  target: 'es2022',
+  platform: 'browser',
+  minify: true,
+  sourcemap: false,
+  external: [],
+  define: {
+    __CRYPTO_WORKER_CODE__: JSON.stringify(cryptoWorkerJS)
+  },
+  write: false
+});
+
+const stasherAppJS = stasherAppBuild.outputFiles[0].text;
 
 // Read HTML template and inline the JavaScript
-let popupHTML = readFileSync('./src/popup.html', 'utf8');
-popupHTML = popupHTML.replace(
-  '<script type="module" src="./popup.js"></script>',
-  `<script>${popupJS}</script>`
+let stasherAppHTML = readFileSync('./src/stasher_app.html', 'utf8');
+stasherAppHTML = stasherAppHTML.replace(
+  '<script type="module" src="./stasher_app.js"></script>',
+  `<script>
+    // Inject crypto worker code into global scope
+    globalThis.__CRYPTO_WORKER_CODE__ = ${JSON.stringify(cryptoWorkerJS)};
+    // Main application code
+    ${stasherAppJS}
+  </script>`
 );
 
 // Build the worker with HTML injection
@@ -32,7 +55,7 @@ await build({
   target: 'es2022',
   platform: 'neutral',
   define: {
-    __POPUP_HTML__: JSON.stringify(popupHTML)
+    __POPUP_HTML__: JSON.stringify(stasherAppHTML)
   },
   minify: true,
   sourcemap: false,

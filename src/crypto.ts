@@ -42,6 +42,15 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 export function base64ToArrayBuffer(base64: string): ArrayBuffer {
+    if (typeof base64 !== 'string') {
+        throw new Error("Invalid base64 input: must be string");
+    }
+    
+    // Basic base64 format validation
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) {
+        throw new Error("Invalid base64 input: invalid characters");
+    }
+    
     try {
         const binary = atob(base64);
         const bytes = new Uint8Array(binary.length);
@@ -50,7 +59,7 @@ export function base64ToArrayBuffer(base64: string): ArrayBuffer {
         }
         return bytes.buffer;
     } catch {
-        throw new Error("Invalid base64 input");
+        throw new Error("Invalid base64 input: decode failed");
     }
 }
 
@@ -60,93 +69,87 @@ export function formatStashToken(id: string, keyBuffer: ArrayBuffer): string {
 }
 
 export function decodeStashToken(token: string): StashTokenData {
-    const colonIndex = token.indexOf(':');
+    if (typeof token !== 'string') {
+        throw new Error('Invalid stash token: must be string');
+    }
+    
+    // Normalize input early
+    const clean = normalizeToken(token);
+    if (!clean) {
+        throw new Error('Invalid stash token: must be non-empty string');
+    }
+    
+    const colonIndex = clean.indexOf(':');
     if (colonIndex === -1) {
         throw new Error('Invalid stash token format: missing colon separator');
     }
     
-    const id = token.substring(0, colonIndex);
-    const keyBase64 = token.substring(colonIndex + 1);
-    const keyBuffer = base64ToArrayBuffer(keyBase64);
+    const id = clean.substring(0, colonIndex).trim();
+    const keyBase64 = clean.substring(colonIndex + 1).trim();
+    
+    // Validate components
+    if (!id) {
+        throw new Error('Invalid stash token: empty ID');
+    }
+    if (!keyBase64) {
+        throw new Error('Invalid stash token: empty key');
+    }
+    
+    // Pre-validate base64 key length for performance (32 bytes = 44 chars base64)
+    if (keyBase64.length !== 44) {
+        throw new Error('Invalid stash token: key base64 length is incorrect');
+    }
+    
+    let keyBuffer: ArrayBuffer;
+    try {
+        keyBuffer = base64ToArrayBuffer(keyBase64);
+    } catch (error) {
+        throw new Error('Invalid stash token: malformed key encoding');
+    }
+    
+    // Validate decoded key length (defensive check)
+    if (keyBuffer.byteLength !== KEY_LENGTH) {
+        throw new Error(`Invalid stash token: key must be ${KEY_LENGTH} bytes`);
+    }
     
     return { id, keyBuffer };
 }
 
-export async function encrypt(secret: string): Promise<EncryptionResult> {
-    // Use crypto.subtle.generateKey for better security compliance
-    const cryptoKey = await crypto.subtle.generateKey(
-        { name: 'AES-GCM', length: 256 },
-        true, // extractable so we can get the raw key
-        ['encrypt']
-    );
-    
-    const keyBuffer = await crypto.subtle.exportKey('raw', cryptoKey);
-    const iv = randomBytes(IV_LENGTH);
-    
-    const encoder = new TextEncoder();
-    const secretBytes = encoder.encode(secret);
-    
-    const encrypted = await crypto.subtle.encrypt(
-        {
-            name: 'AES-GCM',
-            iv: iv,
-            tagLength: TAG_LENGTH * 8
-        },
-        cryptoKey,
-        secretBytes
-    );
-    
-    const encryptedArray = new Uint8Array(encrypted);
-    const ciphertext = encryptedArray.slice(0, -TAG_LENGTH);
-    const tag = encryptedArray.slice(-TAG_LENGTH);
-    
-    return {
-        keyBuffer,
-        iv,
-        ciphertext,
-        tag
-    };
+// Safe version for user input - returns null instead of throwing
+export function tryDecodeStashToken(token: string): StashTokenData | null {
+    try {
+        return decodeStashToken(token);
+    } catch {
+        return null;
+    }
 }
 
-export async function decrypt(payload: PayloadData, keyBuffer: ArrayBuffer): Promise<string> {
+// Legacy encrypt function - now proxies to Web Worker
+export async function encrypt(secret: string): Promise<EncryptionResult> {
+    const { getCryptoManager } = await import('./crypto-manager');
+    const manager = getCryptoManager();
+    
+    const { keyBuffer, payload } = await manager.encrypt(secret);
+    
+    // Convert payload back to EncryptionResult format for compatibility
     const iv = base64ToArrayBuffer(payload.iv);
     const tag = base64ToArrayBuffer(payload.tag);
     const ciphertext = base64ToArrayBuffer(payload.ciphertext);
     
-    if (iv.byteLength !== IV_LENGTH) {
-        throw new Error(`Invalid IV length: must be ${IV_LENGTH} bytes`);
-    }
-    if (tag.byteLength !== TAG_LENGTH) {
-        throw new Error(`Invalid auth tag length: must be ${TAG_LENGTH} bytes`);
-    }
-    if (keyBuffer.byteLength !== KEY_LENGTH) {
-        throw new Error(`Invalid key length: must be ${KEY_LENGTH} bytes`);
-    }
-    
-    const cryptoKey = await crypto.subtle.importKey(
-        'raw',
+    return {
         keyBuffer,
-        { name: 'AES-GCM' },
-        false,
-        ['decrypt']
-    );
+        iv: new Uint8Array(iv),
+        ciphertext: new Uint8Array(ciphertext),
+        tag: new Uint8Array(tag)
+    };
+}
+
+// Legacy decrypt function - now proxies to Web Worker
+export async function decrypt(payload: PayloadData, keyBuffer: ArrayBuffer): Promise<string> {
+    const { getCryptoManager } = await import('./crypto-manager');
+    const manager = getCryptoManager();
     
-    const encryptedData = new Uint8Array(ciphertext.byteLength + tag.byteLength);
-    encryptedData.set(new Uint8Array(ciphertext));
-    encryptedData.set(new Uint8Array(tag), ciphertext.byteLength);
-    
-    const decrypted = await crypto.subtle.decrypt(
-        {
-            name: 'AES-GCM',
-            iv: new Uint8Array(iv),
-            tagLength: TAG_LENGTH * 8
-        },
-        cryptoKey,
-        encryptedData
-    );
-    
-    const decoder = new TextDecoder('utf-8');
-    return decoder.decode(decrypted);
+    return await manager.decrypt(payload, keyBuffer);
 }
 
 export function createPayload(encryptionResult: EncryptionResult): PayloadData {
@@ -155,6 +158,15 @@ export function createPayload(encryptionResult: EncryptionResult): PayloadData {
         tag: arrayBufferToBase64(encryptionResult.tag),
         ciphertext: arrayBufferToBase64(encryptionResult.ciphertext)
     };
+}
+
+// Type guards
+export function isPayloadData(obj: any): obj is PayloadData {
+    return obj &&
+        typeof obj === 'object' &&
+        typeof obj.iv === 'string' &&
+        typeof obj.tag === 'string' &&
+        typeof obj.ciphertext === 'string';
 }
 
 // Validation functions
@@ -170,6 +182,38 @@ export function validateUUID(uuid: string): boolean {
     return typeof uuid === 'string' && UUID_REGEX.test(uuid);
 }
 
+// Safe UUID validation for user input (handles whitespace)
+export function tryValidateUUID(uuid: string): boolean {
+    if (typeof uuid !== 'string') {
+        return false;
+    }
+    return validateUUID(uuid.trim());
+}
+
+// Extract UUID from token or return null if invalid
+export function parseUUID(token: string): string | null {
+    if (typeof token !== 'string') {
+        return null;
+    }
+    
+    const clean = normalizeToken(token);
+    
+    // If it contains a colon, extract the ID part
+    if (clean.includes(':')) {
+        const colonIndex = clean.indexOf(':');
+        const id = clean.substring(0, colonIndex).trim();
+        return tryValidateUUID(id) ? id : null;
+    }
+    
+    // Otherwise treat the whole thing as a potential UUID
+    return tryValidateUUID(clean) ? clean : null;
+}
+
+// Token normalization utility
+export function normalizeToken(token: string): string {
+    return typeof token === 'string' ? token.trim() : '';
+}
+
 // Additional helper functions from CLI version
 export function encodeKey(keyBuffer: ArrayBuffer): string {
     return arrayBufferToBase64(keyBuffer);
@@ -180,5 +224,30 @@ export function encodePayload(payload: PayloadData): string {
 }
 
 export function parsePayload(encoded: string): PayloadData {
-    return JSON.parse(encoded);
+    if (typeof encoded !== 'string') {
+        throw new Error('Invalid payload: must be string');
+    }
+    
+    let data: any;
+    try {
+        data = JSON.parse(encoded);
+    } catch {
+        throw new Error('Invalid payload: malformed JSON');
+    }
+    
+    // Use type guard for cleaner validation
+    if (!isPayloadData(data)) {
+        throw new Error('Invalid payload structure: missing required fields');
+    }
+    
+    return data;
+}
+
+// Safe version for user input - returns null instead of throwing
+export function tryParsePayload(encoded: string): PayloadData | null {
+    try {
+        return parsePayload(encoded);
+    } catch {
+        return null;
+    }
 }
