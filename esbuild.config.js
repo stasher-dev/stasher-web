@@ -57,7 +57,7 @@ await build({
   target: 'es2022',
   platform: 'neutral',
   define: {
-    __POPUP_HTML__: JSON.stringify(stasherAppHTML)
+    __STASHER_APP_HTML__: JSON.stringify(stasherAppHTML)
   },
   minify: true,
   sourcemap: false,

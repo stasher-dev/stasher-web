@@ -4,7 +4,7 @@
  */
 
 // HTML content injected at build time
-declare const __POPUP_HTML__: string;
+declare const __STASHER_APP_HTML__: string;
 
 export default {
   async fetch(request: Request): Promise<Response> {
@@ -12,7 +12,7 @@ export default {
     
     // Serve the stasher app directly at root
     if (url.pathname === '/') {
-      return new Response(__POPUP_HTML__, {
+      return new Response(__STASHER_APP_HTML__, {
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
           'Cache-Control': 'public, max-age=3600',
