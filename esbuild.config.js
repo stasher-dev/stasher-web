@@ -1,5 +1,6 @@
 import { build } from 'esbuild';
 import { readFileSync, writeFileSync } from 'fs';
+import { randomBytes } from 'crypto';
 
 // Build the crypto worker first
 const cryptoWorkerBuild = await build({
@@ -34,13 +35,16 @@ const stasherAppBuild = await build({
 
 const stasherAppJS = stasherAppBuild.outputFiles[0].text;
 
+// Generate secure nonce for CSP
+const scriptNonce = randomBytes(16).toString('base64');
+
 // Read HTML template
 let stasherAppHTML = readFileSync('./src/stasher_app.html', 'utf8');
 
-// Inline JavaScript into the secure app
+// Inline JavaScript into the secure app with nonce
 stasherAppHTML = stasherAppHTML.replace(
   '<script type="module" src="./stasher_app.js"></script>',
-  `<script>
+  `<script nonce="${scriptNonce}">
     // Inject crypto worker code into global scope
     globalThis.__CRYPTO_WORKER_CODE__ = ${JSON.stringify(cryptoWorkerJS)};
     // Main application code
@@ -57,7 +61,8 @@ await build({
   target: 'es2022',
   platform: 'neutral',
   define: {
-    __STASHER_APP_HTML__: JSON.stringify(stasherAppHTML)
+    __STASHER_APP_HTML__: JSON.stringify(stasherAppHTML),
+    __SCRIPT_NONCE__: JSON.stringify(scriptNonce)
   },
   minify: true,
   sourcemap: false,
