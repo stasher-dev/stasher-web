@@ -1,6 +1,6 @@
 /**
- * Stasher Web Worker - Crypto tool interface
- * Serves secure popup for enstash/destash/unstash operations
+ * Stasher Web Worker - Secure crypto tool
+ * Direct app serving with enhanced security headers
  */
 
 // HTML content injected at build time
@@ -10,7 +10,7 @@ export default {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     
-    // Serve the crypto tool at root
+    // Serve the stasher app directly at root
     if (url.pathname === '/') {
       return new Response(__POPUP_HTML__, {
         headers: {
@@ -18,10 +18,15 @@ export default {
           'Cache-Control': 'public, max-age=3600',
           'X-Frame-Options': 'DENY',
           'X-Content-Type-Options': 'nosniff',
-          'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://api.stasher.dev; worker-src blob:;"
+          'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests;",
+          'Cross-Origin-Opener-Policy': 'same-origin',
+          'Cross-Origin-Resource-Policy': 'cross-origin',
+          'Referrer-Policy': 'no-referrer',
+          'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=()'
         }
       });
     }
+    
     
     // Simple favicon (empty response to avoid 404s)
     if (url.pathname === '/favicon.ico') {

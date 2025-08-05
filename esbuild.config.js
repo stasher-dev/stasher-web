@@ -34,8 +34,10 @@ const stasherAppBuild = await build({
 
 const stasherAppJS = stasherAppBuild.outputFiles[0].text;
 
-// Read HTML template and inline the JavaScript
+// Read HTML template
 let stasherAppHTML = readFileSync('./src/stasher_app.html', 'utf8');
+
+// Inline JavaScript into the secure app
 stasherAppHTML = stasherAppHTML.replace(
   '<script type="module" src="./stasher_app.js"></script>',
   `<script>
