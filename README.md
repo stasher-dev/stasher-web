@@ -148,13 +148,28 @@ MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7...
 
 ## 🚀 Deployment
 
+🚀 **Automated CI/CD Pipeline**
+
+This application features automated deployment via [stasher-ci](https://github.com/stasher-dev/stasher-ci):
+
+- **Automatic Deployment**: Pushes to `main` branch automatically deploy to [app.stasher.dev](https://app.stasher.dev)
+- **Cloudflare Workers**: Deployed as a secure, high-performance edge application  
+- **Build Pipeline**: ESBuild compilation, TypeScript checking, and optimization
+- **Zero Downtime**: Seamless updates with Cloudflare's global edge network
+- **Security Hardened**: CSP headers, nonce-based security, and fortress-level protections
+
+**Deployment Status**: [![CI/CD Pipeline](https://github.com/stasher-dev/stasher-app/actions/workflows/ci.yml/badge.svg)](https://github.com/stasher-dev/stasher-app/actions/workflows/ci.yml)
+
 **File Structure:**
 ```
-stasher-web/
-├── stasher-web.mjs    # Main ESM module  
-├── index.html         # Install page
-├── README.md          # Documentation
-└── .gitignore         # Git ignores
+stasher-app/
+├── src/
+│   ├── stasher_app.ts     # Main TypeScript application
+│   ├── worker.ts          # Cloudflare Worker entry point
+│   └── crypto-*.ts        # Encryption modules
+├── dist/                  # Built output (auto-generated)
+├── esbuild.config.js      # Build configuration
+└── wrangler.toml          # Cloudflare deployment config
 
 ## Acknowledgments
 
