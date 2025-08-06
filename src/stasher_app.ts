@@ -20,43 +20,54 @@ const operations = safeQuerySelectorAll('.operation') as NodeListOf<HTMLButtonEl
 const input = safeQuerySelector('#main-input') as HTMLInputElement;
 const message = safeQuerySelector('#message') as HTMLDivElement;
 const clearButton = safeQuerySelector('#clear-button') as HTMLButtonElement;
+const timerDisplay = safeQuerySelector('#timer-display') as HTMLDivElement;
 
 // Store original button content for restoration
 const originalButtonContent = Array.from(operations).map(btn => btn.innerHTML);
 
-// Auto-close timer for security (30 seconds of inactivity)
-let idleTimeout: number;
+// Hide timer display (functionality removed for now)
+timerDisplay.classList.remove('visible');
 
-function resetIdleTimer(): void {
-    clearTimeout(idleTimeout);
-    idleTimeout = setTimeout(() => {
-        // Only auto-close if we're in a popup (not direct browser access)
-        if (window.opener !== null || window.name !== '') {
-            window.close();
-        }
-    }, 30000); // 30 seconds
-}
-
-// Initialize idle timer
-resetIdleTimer();
-
-// Reset timer on user activity
-safeAddEventListener('mousemove', resetIdleTimer);
-safeAddEventListener('keydown', resetIdleTimer);
-safeAddEventListener('click', resetIdleTimer);
-
-// Trusted Types runtime defense - block any unsafe HTML injection
+// Trusted Types runtime defense - allow safe app HTML, block unsafe injection
 if ('trustedTypes' in window) {
     try {
         (window as any).trustedTypes.createPolicy('default', {
             createHTML: (input: string) => {
-                throw new TypeError("Unsafe HTML blocked by Trusted Types policy");
+                // Allow safe app HTML patterns (spinner, SVG icons)
+                const safePatterns = [
+                    '<span class="spinner"></span>',
+                    /<svg[^>]*>.*?<\/svg>/s,
+                    /<path[^>]*\/>/
+                ];
+                
+                // Check if input matches any safe pattern
+                const isSafe = safePatterns.some(pattern => {
+                    if (typeof pattern === 'string') {
+                        return input === pattern;
+                    } else {
+                        return pattern.test(input);
+                    }
+                });
+                
+                if (isSafe) {
+                    return input; // Allow safe HTML
+                } else {
+                    console.warn('Blocked unsafe HTML:', input);
+                    throw new TypeError("Unsafe HTML blocked by Trusted Types policy");
+                }
             },
             createScript: (input: string) => {
+                console.warn('Blocked unsafe script:', input);
                 throw new TypeError("Unsafe script blocked by Trusted Types policy");
             },
             createScriptURL: (input: string) => {
-                throw new TypeError("Unsafe script URL blocked by Trusted Types policy");
+                // Allow blob URLs for Web Workers (crypto operations)
+                if (input.startsWith('blob:')) {
+                    return input; // Allow blob URLs for workers
+                } else {
+                    console.warn('Blocked unsafe script URL:', input);
+                    throw new TypeError("Unsafe script URL blocked by Trusted Types policy");
+                }
             }
         });
     } catch (e) {

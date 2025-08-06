@@ -26,12 +26,14 @@
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
+            justify-content: center;
         }
         
         /* Small mobile (375px+) */
         @media (min-width: 375px) {
             .container {
                 padding: 20px;
+                justify-content: center;
             }
         }
         
@@ -41,6 +43,7 @@
                 max-width: 400px;
                 max-height: 350px;
                 padding: 24px;
+                justify-content: center;
             }
         }
         
@@ -49,6 +52,7 @@
             .container {
                 max-width: 600px;
                 max-height: 400px;
+                justify-content: center;
             }
         }
         
@@ -57,6 +61,7 @@
             .container {
                 max-width: 800px;
                 max-height: 450px;
+                justify-content: center;
             }
         }
         
@@ -65,6 +70,7 @@
             .container {
                 max-width: 900px;
                 max-height: 500px;
+                justify-content: center;
             }
         }
         
@@ -72,6 +78,7 @@
         @media (min-width: 500px) and (min-height: 400px) {
             .container {
                 background: #1e1e1e;
+                justify-content: center;
             }
         }
         
@@ -109,7 +116,6 @@
         }
         
         .main-content {
-            flex: 1;
             display: flex;
             flex-direction: column;
         }
@@ -118,6 +124,26 @@
         .version {
             color: #565656;
             font-size: 12px;
+        }
+        
+        .timer-display {
+            color: #9CDCFE;
+            font-size: 12px;
+            font-family: 'Fira Code', monospace;
+            opacity: 0;
+            transition: opacity 0.3s ease, color 0.3s ease;
+        }
+        
+        .timer-display.visible {
+            opacity: 1;
+        }
+        
+        .timer-display.warning {
+            color: #D7BA7D;
+        }
+        
+        .timer-display.danger {
+            color: #CE9178;
         }
         
         
@@ -303,6 +329,7 @@
     <div class="container">
         <div class="header">
             <div class="branding">stasher<span class="version"> v1.0</span></div>
+            <div class="timer-display" id="timer-display">30s</div>
         </div>
         
         <div class="main-content">
