@@ -1,7 +1,5 @@
 # Stasher Web
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 **Secure secret sharing for browser DevTools**. Zero-install, zero-trust, burn-after-read secret sharing that works in any browser console.
 
 ## Why?
