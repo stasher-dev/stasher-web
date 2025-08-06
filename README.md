@@ -144,9 +144,9 @@ MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7...
 - **[Stasher CLI](https://github.com/stasher-dev/stasher-cli)** - Terminal version (`npm install -g stasher-cli` or `npx`)
 - **[Stasher API](https://github.com/stasher-dev/stasher-api)** - Cloudflare Workers API backend (open source)
 
-## 🚀 Deployment
+## Deployment
 
-🚀 **Automated CI/CD Pipeline**
+**Automated CI/CD Pipeline**
 
 This application features automated deployment via [stasher-ci](https://github.com/stasher-dev/stasher-ci):
 
@@ -168,6 +168,70 @@ stasher-app/
 ├── dist/                  # Built output (auto-generated)
 ├── esbuild.config.js      # Build configuration
 └── wrangler.toml          # Cloudflare deployment config
+
+## Cryptographic Verification
+
+**All releases are signed with Cosign** using GitHub OIDC keyless signing and logged to the [Rekor transparency log](https://rekor.sigstore.dev).
+
+### Verify Web Application
+
+The browser application bundle is signed during the release process:
+
+```bash
+# Install cosign (if you don't have it)
+# macOS: brew install cosign
+# Linux: see https://docs.sigstore.dev/cosign/installation/
+
+# Get the latest release version
+VERSION=$(gh release list -R stasher-dev/stasher-app --limit 1 | cut -f1)
+
+# Download checksums and signature
+curl -L -O "https://github.com/stasher-dev/stasher-app/releases/download/$VERSION/checksums.txt"
+curl -L -O "https://github.com/stasher-dev/stasher-app/releases/download/$VERSION/checksums.txt.sig"
+
+# Verify signature
+cosign verify-blob \
+  --certificate-identity-regexp="https://github.com/stasher-dev/stasher-app/.*" \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+  --signature=checksums.txt.sig \
+  checksums.txt
+
+# Verify integrity
+sha256sum -c checksums.txt
+```
+
+### ESM Module Verification
+
+For the JavaScript ESM module used in the browser:
+
+```bash
+# Download the module (if accessing directly)
+curl -L -O "https://github.com/stasher-dev/stasher-app/releases/download/$VERSION/stasher-web.mjs"
+
+# Verify against checksums
+grep "stasher-web.mjs" checksums.txt | sha256sum -c -
+```
+
+### Runtime Verification
+
+Since this is deployed as a Cloudflare Worker, you can verify the deployed app matches signed releases:
+
+```bash
+# Check deployed application metadata
+curl -s https://app.stasher.dev/ | grep -o 'version.*' || echo "Version metadata not exposed"
+
+# Cross-reference with GitHub releases
+gh release list -R stasher-dev/stasher-app
+```
+
+### What This Proves
+
+**Source Integrity** - Web app matches signed GitHub releases  
+**Build Authenticity** - Code was built by verified GitHub Actions  
+**Crypto Module Security** - All encryption code is verifiable  
+**Zero-Trust Deployment** - Direct path from source to production
+
+**Your secrets deserve verified client-side crypto.**
 
 ## Acknowledgments
 
