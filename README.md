@@ -169,9 +169,9 @@ stasher-app/
 ├── esbuild.config.js      # Build configuration
 └── wrangler.toml          # Cloudflare deployment config
 
-## Cryptographic Verification
+## 🔐 Cryptographic Verification
 
-**All releases are signed with Cosign** using GitHub OIDC keyless signing and logged to the [Rekor transparency log](https://rekor.sigstore.dev).
+**All releases are signed with Cosign** using GitHub OIDC keyless signing and include **SLSA v1 provenance attestation**, all logged to the [Rekor transparency log](https://rekor.sigstore.dev).
 
 ### Verify Web Application
 
@@ -200,6 +200,28 @@ cosign verify-blob \
 sha256sum -c checksums.txt
 ```
 
+### 🧾 Verify SLSA v1 Provenance Attestation
+
+```bash
+# Download the attestation
+curl -L -O "https://github.com/stasher-dev/stasher-app/releases/download/$VERSION/checksums.txt.intoto.jsonl"
+
+# Option 1: Verify with slsa-verifier (recommended)
+# Install: go install github.com/slsa-framework/slsa-verifier/v2/cli/slsa-verifier@latest
+slsa-verifier verify-artifact \
+  --provenance-path checksums.txt.intoto.jsonl \
+  --source-uri github.com/stasher-dev/stasher-app \
+  --source-tag $VERSION \
+  checksums.txt
+
+# Option 2: Manual inspection with cosign
+cosign verify-attestation \
+  --certificate-identity-regexp="https://github.com/stasher-dev/stasher-app/.*" \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+  --type=https://slsa.dev/provenance/v1 \
+  checksums.txt | jq .payload -r | base64 -d | jq
+```
+
 ### ESM Module Verification
 
 For the JavaScript ESM module used in the browser:
@@ -224,14 +246,22 @@ curl -s https://app.stasher.dev/ | grep -o 'version.*' || echo "Version metadata
 gh release list -R stasher-dev/stasher-app
 ```
 
-### What This Proves
+### 🏗️ What This Proves
 
-**Source Integrity** - Web app matches signed GitHub releases  
-**Build Authenticity** - Code was built by verified GitHub Actions  
-**Crypto Module Security** - All encryption code is verifiable  
-**Zero-Trust Deployment** - Direct path from source to production
+**✅ Source Integrity** - Web app matches signed GitHub releases  
+**✅ Build Authenticity** - Code was built by verified GitHub Actions  
+**✅ Crypto Module Security** - All encryption code is verifiable  
+**✅ Zero-Trust Deployment** - Direct path from source to production  
+**✅ Provenance** - SLSA v1 attestation captures complete build metadata  
+**✅ Transparency** - All signatures logged to public [Rekor](https://rekor.sigstore.dev) log
 
-**Your secrets deserve verified client-side crypto.**
+The SLSA attestation contains detailed metadata about:
+- **Source commit** and repository
+- **Build environment** (Node.js version, OS, dependencies)
+- **Build process** (exact commands, working directory)
+- **GitHub Actions context** (workflow, actor, run ID)
+
+**Your secrets deserve verified client-side crypto.** 🛡️
 
 ## Acknowledgments
 
