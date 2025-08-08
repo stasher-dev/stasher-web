@@ -89,7 +89,7 @@ class CryptoWorkerManagerImpl implements CryptoWorkerManager {
         });
     }
 
-    async encrypt(secret: string): Promise<{ keyBuffer: ArrayBuffer; payload: PayloadData }> {
+    async encrypt(secret: string): Promise<{ keyBuffer: Uint8Array; payload: PayloadData }> {
         const result = await this.sendRequest('encrypt', { secret });
         return {
             keyBuffer: result.keyBuffer,
@@ -97,7 +97,7 @@ class CryptoWorkerManagerImpl implements CryptoWorkerManager {
         };
     }
 
-    async decrypt(payload: PayloadData, keyBuffer: ArrayBuffer): Promise<string> {
+    async decrypt(payload: PayloadData, keyBuffer: Uint8Array): Promise<string> {
         const result = await this.sendRequest('decrypt', { payload, keyBuffer });
         return result.secret;
     }

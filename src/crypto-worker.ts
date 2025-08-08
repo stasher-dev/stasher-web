@@ -6,6 +6,7 @@ import type { EncryptionResult, PayloadData, CryptoWorkerAction } from './crypto
 
 // Constants (duplicated to avoid imports in worker)
 const MAX_SECRET_LENGTH = 4096;
+const MAX_CIPHERTEXT_BYTES = 16384; // Max ciphertext bytes (server limit)
 const KEY_LENGTH = 32;
 const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
@@ -15,29 +16,37 @@ function randomBytes(length: number): Uint8Array {
     return crypto.getRandomValues(new Uint8Array(length));
 }
 
-// Base64 encoding/decoding functions
-// Note: Using atob/btoa for simplicity and compatibility
-// For high-performance apps, I need to refactor with TextEncoder/Decoder with Uint8Array buffer approach
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
+// Base64url encoding/decoding functions
+// Note: Using atob/btoa with base64url conversion for compatibility and URL-safety
+function arrayBufferToBase64Url(input: ArrayBuffer | ArrayBufferView): string {
+    const view = input instanceof ArrayBuffer
+        ? new Uint8Array(input)
+        : input instanceof Uint8Array
+        ? input
+        : new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+
+    // Chunk to avoid call-arg limits and O(n²) string concatenation
+    const parts: string[] = [];
+    const CHUNK = 0x8000; // 32k
+    for (let i = 0; i < view.length; i += CHUNK) {
+        parts.push(String.fromCharCode(...view.subarray(i, i + CHUNK)));
     }
-    return btoa(binary);
+    return toBase64Url(btoa(parts.join('')));
 }
 
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
-    try {
-        const binary = atob(base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i);
-        }
-        return bytes.buffer;
-    } catch {
-        throw new Error("Invalid base64 input");
+function toBase64Url(b64: string): string {
+    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+
+function fromBase64Url(b64url: string): string {
+    // Convert base64url to base64 and add padding
+    let b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = b64.length % 4;
+    if (pad) {
+        b64 += '='.repeat(4 - pad);
     }
+    return b64;
 }
 
 // Core crypto operations
@@ -57,7 +66,7 @@ async function encryptSecret(secret: string): Promise<EncryptionResult> {
         ['encrypt']
     );
     
-    const keyBuffer = await crypto.subtle.exportKey('raw', cryptoKey);
+    const keyBuffer = new Uint8Array(await crypto.subtle.exportKey('raw', cryptoKey));
     const iv = randomBytes(IV_LENGTH);
     
     const encoder = new TextEncoder();
@@ -85,29 +94,29 @@ async function encryptSecret(secret: string): Promise<EncryptionResult> {
     };
 }
 
-async function decryptSecret(payload: PayloadData, keyBuffer: ArrayBuffer): Promise<string> {
+async function decryptSecret(payload: PayloadData, keyBuffer: Uint8Array): Promise<string> {
     // Validate inputs
     if (!payload || typeof payload !== 'object') {
         throw new Error('Invalid payload');
     }
-    if (!keyBuffer || keyBuffer.byteLength !== KEY_LENGTH) {
-        throw new Error(`Invalid key length: must be ${KEY_LENGTH} bytes`);
+    if (!keyBuffer || keyBuffer.length !== KEY_LENGTH) {
+        throw new Error(`Invalid key: must be ${KEY_LENGTH} bytes`);
     }
 
-    const iv = base64ToArrayBuffer(payload.iv);
-    const tag = base64ToArrayBuffer(payload.tag);
-    const ciphertext = base64ToArrayBuffer(payload.ciphertext);
+    const iv = base64UrlToBytes(payload.iv);
+    const tag = base64UrlToBytes(payload.tag);
+    const ciphertext = base64UrlToBytes(payload.ciphertext);
     
-    if (iv.byteLength !== IV_LENGTH) {
+    if (iv.length !== IV_LENGTH) {
         throw new Error(`Invalid IV length: must be ${IV_LENGTH} bytes`);
     }
-    if (tag.byteLength !== TAG_LENGTH) {
+    if (tag.length !== TAG_LENGTH) {
         throw new Error(`Invalid auth tag length: must be ${TAG_LENGTH} bytes`);
     }
     
     const cryptoKey = await crypto.subtle.importKey(
         'raw',
-        keyBuffer,
+        keyBuffer.buffer,
         { name: 'AES-GCM' },
         false, // not extractable for security
         ['decrypt']
@@ -120,7 +129,7 @@ async function decryptSecret(payload: PayloadData, keyBuffer: ArrayBuffer): Prom
     const decrypted = await crypto.subtle.decrypt(
         {
             name: 'AES-GCM',
-            iv: new Uint8Array(iv),
+            iv: iv,
             tagLength: TAG_LENGTH * 8
         },
         cryptoKey,
@@ -133,9 +142,9 @@ async function decryptSecret(payload: PayloadData, keyBuffer: ArrayBuffer): Prom
 
 function createPayload(encryptionResult: EncryptionResult): PayloadData {
     return {
-        iv: arrayBufferToBase64(encryptionResult.iv),
-        tag: arrayBufferToBase64(encryptionResult.tag),
-        ciphertext: arrayBufferToBase64(encryptionResult.ciphertext)
+        iv: arrayBufferToBase64Url(encryptionResult.iv),
+        tag: arrayBufferToBase64Url(encryptionResult.tag),
+        ciphertext: arrayBufferToBase64Url(encryptionResult.ciphertext)
     };
 }
 
@@ -238,25 +247,23 @@ self.onmessage = async (event: MessageEvent) => {
         }
         
         // Send result back to main thread with transfer optimization
-        // For encrypt operations, transfer keyBuffer ownership to main thread
-        if (action === 'encrypt' && result.keyBuffer instanceof ArrayBuffer) {
+        if (action === 'encrypt') {
+            // Zero-copy transfer of keyBuffer to main thread
             self.postMessage({
                 id,
                 success: true,
                 result
-            }, { transfer: [result.keyBuffer] });
+            }, [result.keyBuffer.buffer]);
+            
+            // Zero the original keyBuffer in worker after transfer
+            result.keyBuffer.fill(0);
+            result.keyBuffer = null;
         } else {
             self.postMessage({
                 id,
                 success: true,
                 result
             });
-        }
-        
-        // Defensive cleanup: wipe any remaining sensitive data
-        if (action === 'encrypt') {
-            // KeyBuffer is already transferred (ownership moved), but clear reference
-            result.keyBuffer = null;
         }
         
     } catch (error) {

@@ -1,5 +1,6 @@
 // Constants (from CLI constants.ts)
 export const MAX_SECRET_LENGTH = 4096; // 4KB plaintext
+export const MAX_CIPHERTEXT_BYTES = 16384; // Max ciphertext bytes (server limit)
 export const DEFAULT_API_BASE_URL = Object.freeze('https://api.stasher.dev'); // Prevent accidental override
 export const KEY_LENGTH = 32; // 256-bit key
 export const IV_LENGTH = 12; // 96-bit IV for GCM
@@ -8,9 +9,22 @@ export const TAG_LENGTH = 16; // 128-bit auth tag
 // UUID v4 validation regex (same as CLI)
 export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+// Base64url validation regex and helpers
+const B64URL = /^[A-Za-z0-9_-]+$/;
+const b64urlLen = (s: string) => {
+    const mod = s.length % 4; 
+    const pad = mod ? 4 - mod : 0;
+    return Math.floor(((s.length + pad) * 3) / 4) - pad;
+};
+const assertB64UrlLen = (s: string, n: number, what: string) => {
+    if (!B64URL.test(s) || b64urlLen(s) !== n) {
+        throw new Error(`Invalid ${what}: must decode to ${n} bytes`);
+    }
+};
+
 // Types
 export interface EncryptionResult {
-    keyBuffer: ArrayBuffer;
+    keyBuffer: Uint8Array;
     iv: Uint8Array;
     ciphertext: Uint8Array;
     tag: Uint8Array;
@@ -24,7 +38,7 @@ export interface PayloadData {
 
 export interface StashTokenData {
     id: string;
-    keyBuffer: ArrayBuffer;
+    keyBuffer: Uint8Array;
 }
 
 // Utility functions
@@ -32,40 +46,67 @@ export function randomBytes(length: number): Uint8Array {
     return crypto.getRandomValues(new Uint8Array(length));
 }
 
-export function arrayBufferToBase64(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
+export function arrayBufferToBase64Url(input: ArrayBuffer | ArrayBufferView): string {
+    const view = input instanceof ArrayBuffer
+        ? new Uint8Array(input)
+        : input instanceof Uint8Array
+        ? input
+        : new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+
+    // Chunk to avoid call-arg limits and O(n²) string concatenation
+    const parts: string[] = [];
+    const CHUNK = 0x8000; // 32k
+    for (let i = 0; i < view.length; i += CHUNK) {
+        parts.push(String.fromCharCode(...view.subarray(i, i + CHUNK)));
     }
-    return btoa(binary);
+    return toBase64Url(btoa(parts.join('')));
 }
 
-export function base64ToArrayBuffer(base64: string): ArrayBuffer {
-    if (typeof base64 !== 'string') {
-        throw new Error("Invalid base64 input: must be string");
+function toBase64Url(b64: string): string {
+    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+export function base64UrlToBytes(base64url: string): Uint8Array {
+    if (typeof base64url !== 'string') {
+        throw new Error("Invalid base64url input: must be string");
     }
     
-    // Basic base64 format validation
-    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) {
-        throw new Error("Invalid base64 input: invalid characters");
+    // Base64url format validation (no padding, uses -_ instead of +/, require at least one character)
+    if (!B64URL.test(base64url)) {
+        throw new Error("Invalid base64url input: invalid characters or empty string");
     }
     
     try {
+        // Convert base64url back to standard base64 for atob
+        const base64 = fromBase64Url(base64url);
         const binary = atob(base64);
         const bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) {
             bytes[i] = binary.charCodeAt(i);
         }
-        return bytes.buffer;
+        return bytes;
     } catch {
-        throw new Error("Invalid base64 input: decode failed");
+        throw new Error("Invalid base64url input: decode failed");
     }
 }
 
-export function formatStashToken(id: string, keyBuffer: ArrayBuffer): string {
-    const keyBase64 = arrayBufferToBase64(keyBuffer);
-    return `${id}:${keyBase64}`;
+
+function fromBase64Url(b64url: string): string {
+    // Convert base64url to base64 and add padding
+    let b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = b64.length % 4;
+    if (pad) {
+        b64 += '='.repeat(4 - pad);
+    }
+    return b64;
+}
+
+export function formatStashToken(id: string, keyBuffer: Uint8Array): string {
+    if (keyBuffer.length !== KEY_LENGTH) {
+        throw new Error(`Key must be ${KEY_LENGTH} bytes`);
+    }
+    const keyBase64Url = arrayBufferToBase64Url(keyBuffer);
+    return `${id}:${keyBase64Url}`;
 }
 
 export function decodeStashToken(token: string): StashTokenData {
@@ -95,24 +136,27 @@ export function decodeStashToken(token: string): StashTokenData {
         throw new Error('Invalid stash token: empty key');
     }
     
-    // Pre-validate base64 key length for performance (32 bytes = 44 chars base64)
-    if (keyBase64.length !== 44) {
-        throw new Error('Invalid stash token: key base64 length is incorrect');
+    // Validate UUID format
+    if (!UUID_REGEX.test(id)) {
+        throw new Error('Invalid stash token: malformed UUID');
     }
     
-    let keyBuffer: ArrayBuffer;
+    // Fast-fail key format and length validation (32 bytes = exactly 43 base64url chars)
+    assertB64UrlLen(keyBase64, KEY_LENGTH, 'stash token key');
+    
+    let keyBytes: Uint8Array;
     try {
-        keyBuffer = base64ToArrayBuffer(keyBase64);
+        keyBytes = base64UrlToBytes(keyBase64);
     } catch (error) {
         throw new Error('Invalid stash token: malformed key encoding');
     }
     
     // Validate decoded key length (defensive check)
-    if (keyBuffer.byteLength !== KEY_LENGTH) {
+    if (keyBytes.length !== KEY_LENGTH) {
         throw new Error(`Invalid stash token: key must be ${KEY_LENGTH} bytes`);
     }
     
-    return { id, keyBuffer };
+    return { id, keyBuffer: keyBytes };
 }
 
 // Safe version for user input - returns null instead of throwing
@@ -132,20 +176,20 @@ export async function encrypt(secret: string): Promise<EncryptionResult> {
     const { keyBuffer, payload } = await manager.encrypt(secret);
     
     // Convert payload back to EncryptionResult format for compatibility
-    const iv = base64ToArrayBuffer(payload.iv);
-    const tag = base64ToArrayBuffer(payload.tag);
-    const ciphertext = base64ToArrayBuffer(payload.ciphertext);
+    const iv = base64UrlToBytes(payload.iv);
+    const tag = base64UrlToBytes(payload.tag);
+    const ciphertext = base64UrlToBytes(payload.ciphertext);
     
     return {
-        keyBuffer,
-        iv: new Uint8Array(iv),
-        ciphertext: new Uint8Array(ciphertext),
-        tag: new Uint8Array(tag)
+        keyBuffer: new Uint8Array(keyBuffer),
+        iv,
+        ciphertext,
+        tag
     };
 }
 
 // Legacy decrypt function - now proxies to Web Worker
-export async function decrypt(payload: PayloadData, keyBuffer: ArrayBuffer): Promise<string> {
+export async function decrypt(payload: PayloadData, keyBuffer: Uint8Array): Promise<string> {
     const { getCryptoManager } = await import('./crypto-manager');
     const manager = getCryptoManager();
     
@@ -154,9 +198,9 @@ export async function decrypt(payload: PayloadData, keyBuffer: ArrayBuffer): Pro
 
 export function createPayload(encryptionResult: EncryptionResult): PayloadData {
     return {
-        iv: arrayBufferToBase64(encryptionResult.iv),
-        tag: arrayBufferToBase64(encryptionResult.tag),
-        ciphertext: arrayBufferToBase64(encryptionResult.ciphertext)
+        iv: arrayBufferToBase64Url(encryptionResult.iv),
+        tag: arrayBufferToBase64Url(encryptionResult.tag),
+        ciphertext: arrayBufferToBase64Url(encryptionResult.ciphertext)
     };
 }
 
@@ -215,8 +259,8 @@ export function normalizeToken(token: string): string {
 }
 
 // Additional helper functions from CLI version
-export function encodeKey(keyBuffer: ArrayBuffer): string {
-    return arrayBufferToBase64(keyBuffer);
+export function encodeKey(key: ArrayBuffer | ArrayBufferView): string {
+    return arrayBufferToBase64Url(key);
 }
 
 export function encodePayload(payload: PayloadData): string {
@@ -235,13 +279,58 @@ export function parsePayload(encoded: string): PayloadData {
         throw new Error('Invalid payload: malformed JSON');
     }
     
-    // Use type guard for cleaner validation
-    if (!isPayloadData(data)) {
-        throw new Error('Invalid payload structure: missing required fields');
+    // Strict runtime validation
+    if (!data || typeof data !== 'object') {
+        throw new Error('Invalid payload: must be object');
+    }
+    
+    // Field existence checks
+    if (typeof data.iv !== 'string') {
+        throw new Error('Invalid payload: iv must be string');
+    }
+    if (typeof data.tag !== 'string') {
+        throw new Error('Invalid payload: tag must be string');
+    }
+    if (typeof data.ciphertext !== 'string') {
+        throw new Error('Invalid payload: ciphertext must be string');
+    }
+    
+    // Base64url format and length validation
+    assertB64UrlLen(data.iv, IV_LENGTH, 'payload iv');
+    assertB64UrlLen(data.tag, TAG_LENGTH, 'payload tag');
+    
+    // Validate ciphertext format (length validation follows)
+    if (!B64URL.test(data.ciphertext)) {
+        throw new Error('Invalid payload: ciphertext must be base64url format');
+    }
+    
+    // Validate ciphertext length
+    const ctLen = b64urlLen(data.ciphertext);
+    if (ctLen <= 0) {
+        throw new Error('Invalid payload: ciphertext cannot be empty');
+    }
+    // Cap to server max ciphertext bytes (not plaintext) to fail early client-side
+    if (ctLen > MAX_CIPHERTEXT_BYTES) {
+        throw new Error(`Invalid payload: ciphertext too large (max ${MAX_CIPHERTEXT_BYTES} bytes)`);
     }
     
     return data;
 }
+
+// Memory safety helpers
+// IMPORTANT: Use these after displaying secrets to wipe memory
+// - After decrypt: zeroArrayBuffer(keyBuffer) and zeroUint8(any views)
+// - Never use innerHTML for secrets, only textContent or input.value
+// - Clear displayed secrets with secureErase() after user interaction
+export function zeroArrayBuffer(buf?: ArrayBuffer | null): void {
+    if (!buf) return;
+    new Uint8Array(buf).fill(0);
+}
+
+export function zeroUint8(u8?: Uint8Array | null): void {
+    if (u8) u8.fill(0);
+}
+
 
 // Safe version for user input - returns null instead of throwing
 export function tryParsePayload(encoded: string): PayloadData | null {

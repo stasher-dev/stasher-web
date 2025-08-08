@@ -2,7 +2,7 @@
 
 // Re-export existing types from crypto.ts
 export interface EncryptionResult {
-    keyBuffer: ArrayBuffer;
+    keyBuffer: Uint8Array;
     iv: Uint8Array;
     ciphertext: Uint8Array;
     tag: Uint8Array;
@@ -16,7 +16,7 @@ export interface PayloadData {
 
 export interface StashTokenData {
     id: string;
-    keyBuffer: ArrayBuffer;
+    keyBuffer: Uint8Array;
 }
 
 // Worker action types for reuse and type safety
@@ -35,7 +35,7 @@ export interface EncryptRequest {
 
 export interface DecryptRequest {
     payload: PayloadData;
-    keyBuffer: ArrayBuffer;
+    keyBuffer: Uint8Array;
 }
 
 export interface WorkerResponse {
@@ -46,7 +46,7 @@ export interface WorkerResponse {
 }
 
 export interface EncryptResult {
-    keyBuffer: ArrayBuffer;
+    keyBuffer: Uint8Array;
     payload: PayloadData;
 }
 
@@ -56,7 +56,7 @@ export interface DecryptResult {
 
 // Worker management interface
 export interface CryptoWorkerManager {
-    encrypt(secret: string): Promise<{ keyBuffer: ArrayBuffer; payload: PayloadData }>;
-    decrypt(payload: PayloadData, keyBuffer: ArrayBuffer): Promise<string>;
+    encrypt(secret: string): Promise<{ keyBuffer: Uint8Array; payload: PayloadData }>;
+    decrypt(payload: PayloadData, keyBuffer: Uint8Array): Promise<string>;
     terminate(): void;
 }

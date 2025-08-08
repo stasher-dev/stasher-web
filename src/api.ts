@@ -8,7 +8,9 @@ import {
     decodeStashToken,
     validateSecretContent,
     validateSecretLength,
-    validateUUID
+    validateUUID,
+    zeroArrayBuffer,
+    zeroUint8
 } from './crypto.js';
 
 // Allow API base URL override via query string for testing/dev
@@ -17,7 +19,7 @@ function getApiBaseUrl(): string {
     return urlParams.get('api') || DEFAULT_API_BASE_URL;
 }
 
-export async function performEnstash(secret: string): Promise<string> {
+export async function performEnstash(secret: string, options?: { signal?: AbortSignal }): Promise<string> {
     if (!validateSecretContent(secret)) {
         throw new Error('Secret cannot be empty or whitespace only');
     }
@@ -33,7 +35,8 @@ export async function performEnstash(secret: string): Promise<string> {
         const response = await fetch(`${getApiBaseUrl()}/enstash`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: options?.signal
         });
         
         if (!response.ok) {
@@ -43,6 +46,9 @@ export async function performEnstash(secret: string): Promise<string> {
         
         const result = await response.json();
         const token = formatStashToken(result.id, encryptionResult.keyBuffer);
+        
+        // Zero the key buffer after token creation
+        zeroUint8(encryptionResult.keyBuffer);
         
         return token;
         
@@ -55,7 +61,7 @@ export async function performEnstash(secret: string): Promise<string> {
     }
 }
 
-export async function performDestash(token: string): Promise<string> {
+export async function performDestash(token: string, options?: { signal?: AbortSignal }): Promise<string> {
     try {
         const { id, keyBuffer } = decodeStashToken(token);
         
@@ -64,7 +70,8 @@ export async function performDestash(token: string): Promise<string> {
         }
         
         const response = await fetch(`${getApiBaseUrl()}/destash/${id}`, {
-            method: 'GET'
+            method: 'GET',
+            signal: options?.signal
         });
         
         if (!response.ok) {
@@ -86,6 +93,9 @@ export async function performDestash(token: string): Promise<string> {
         const payload = await response.json();
         const secret = await decrypt(payload, keyBuffer);
         
+        // Zero the key buffer after decryption (burn-after-read)
+        zeroUint8(keyBuffer);
+        
         return secret;
         
     } catch (error) {
@@ -97,7 +107,7 @@ export async function performDestash(token: string): Promise<string> {
     }
 }
 
-export async function performUnstash(tokenOrId: string): Promise<string> {
+export async function performUnstash(tokenOrId: string, options?: { signal?: AbortSignal }): Promise<string> {
     try {
         let id: string;
         if (tokenOrId.includes(':')) {
@@ -112,7 +122,8 @@ export async function performUnstash(tokenOrId: string): Promise<string> {
         }
         
         const response = await fetch(`${getApiBaseUrl()}/unstash/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            signal: options?.signal
         });
         
         if (!response.ok) {
