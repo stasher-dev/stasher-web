@@ -49,6 +49,31 @@ function fromBase64Url(b64url: string): string {
     return b64;
 }
 
+function base64UrlToBytes(base64url: string): Uint8Array {
+    if (typeof base64url !== 'string') {
+        throw new Error("Invalid base64url input: must be string");
+    }
+    
+    // Base64url format validation (no padding, uses -_ instead of +/)
+    const B64URL = /^[A-Za-z0-9_-]+$/;
+    if (!B64URL.test(base64url)) {
+        throw new Error("Invalid base64url input: invalid characters or empty string");
+    }
+    
+    try {
+        // Convert base64url back to standard base64 for atob
+        const base64 = fromBase64Url(base64url);
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes;
+    } catch {
+        throw new Error("Invalid base64url input: decode failed");
+    }
+}
+
 // Core crypto operations
 async function encryptSecret(secret: string): Promise<EncryptionResult> {
     // Validate input
