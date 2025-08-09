@@ -21,7 +21,26 @@ class CryptoWorkerManagerImpl implements CryptoWorkerManager {
             
             const blob = new Blob([workerCode], { type: 'application/javascript' });
             this.workerUrl = URL.createObjectURL(blob);
-            this.worker = new Worker(this.workerUrl);
+            
+            // Handle Trusted Types if enabled
+            let workerUrl: string | TrustedScriptURL = this.workerUrl;
+            if (typeof trustedTypes !== 'undefined' && trustedTypes.createPolicy) {
+                try {
+                    const policy = trustedTypes.createPolicy('crypto-worker', {
+                        createScriptURL: (url: string) => url
+                    });
+                    workerUrl = policy.createScriptURL(this.workerUrl);
+                } catch (error) {
+                    // If we can't create a policy, try using an existing one
+                    const defaultPolicy = trustedTypes.defaultPolicy;
+                    if (defaultPolicy?.createScriptURL) {
+                        workerUrl = defaultPolicy.createScriptURL(this.workerUrl);
+                    }
+                    // If that fails too, we'll try the plain URL and let it error
+                }
+            }
+            
+            this.worker = new Worker(workerUrl);
             
             this.worker.onmessage = (event: MessageEvent) => {
                 const response: WorkerResponse = event.data;
